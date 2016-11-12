@@ -18,11 +18,11 @@ __all__ = ('intersection', 'difference', 'strtotuple',
            'is_color_transparent', 'hex_colormap', 'colormap', 'boundary',
            'deprecated', 'SafeList',
            'interpolate', 'QueryDict',
-           'platform', 'escape_markup', 'reify', 'rgba', 'pi_version')
+           'platform', 'escape_markup', 'reify', 'rgba')
 
-from os import environ, path
+from os import environ
 from sys import platform as _sys_platform
-from re import match, split, search, MULTILINE, IGNORECASE
+from re import match, split
 from kivy.compat import string_types
 
 
@@ -75,7 +75,7 @@ def strtotuple(s):
 
     '''
     # security
-    if not match(r'^[,.0-9 ()\[\]]*$', s):
+    if not match('^[,.0-9 ()\[\]]*$', s):
         raise Exception('Invalid characters in string for tuple conversion')
     # fast syntax check
     if s.count('(') != s.count(')'):
@@ -92,20 +92,19 @@ def rgba(s, *args):
     '''Return a Kivy color (4 value from 0-1 range) from either a hex string or
     a list of 0-255 values.
 
-    .. versionadded:: 1.10.0
+    .. versionadded:: 1.9.2
     '''
     if isinstance(s, string_types):
         return get_color_from_hex(s)
-    if isinstance(s, (list, tuple)):
-        s = [x / 255. for x in s]
+    elif isinstance(s, (list, tuple)):
+        s = map(lambda x: x / 255., s)
         if len(s) == 3:
-            s.append(1)
+            return list(s) + [1]
         return s
-    if isinstance(s, (int, float)):
-        s = [s / 255.]
-        s.extend(x / 255. for x in args)
+    elif isinstance(s, (int, float)):
+        s = map(lambda x: x / 255., [s] + list(args))
         if len(s) == 3:
-            s.append(1)
+            return list(s) + [1]
         return s
     raise Exception('Invalid value (not a string / list / tuple)')
 
@@ -120,7 +119,7 @@ def get_color_from_hex(s):
     value = [int(x, 16) / 255.
              for x in split('([0-9a-f]{2})', s.lower()) if x != '']
     if len(value) == 3:
-        value.append(1.0)
+        value.append(1)
     return value
 
 
@@ -158,7 +157,6 @@ def is_color_transparent(c):
     if float(c[3]) == 0.:
         return True
     return False
-
 
 hex_colormap = {
     'aliceblue': '#f0f8ff',
@@ -315,16 +313,13 @@ colormap = {k: get_color_from_hex(v) for k, v in hex_colormap.items()}
 DEPRECATED_CALLERS = []
 
 
-def deprecated(func=None, msg=''):
+def deprecated(func):
     '''This is a decorator which can be used to mark functions
     as deprecated. It will result in a warning being emitted the first time
     the function is used.'''
 
     import inspect
     import functools
-
-    if func is None:
-        return functools.partial(deprecated, msg=msg)
 
     @functools.wraps(func)
     def new_func(*args, **kwargs):
@@ -341,15 +336,10 @@ def deprecated(func=None, msg=''):
                     func.__code__.co_filename,
                     func.__code__.co_firstlineno + 1,
                     file, line, caller))
-
-            if msg:
-                warning = '{}: {}'.format(msg, warning)
-            warning = 'Deprecated: ' + warning
-
             from kivy.logger import Logger
-            Logger.warning(warning)
+            Logger.warn(warning)
             if func.__doc__:
-                Logger.warning(func.__doc__)
+                Logger.warn(func.__doc__)
         return func(*args, **kwargs)
     return new_func
 
@@ -424,17 +414,14 @@ def format_bytes_to_human(size, precision=2):
 
 def _get_platform():
     # On Android sys.platform returns 'linux2', so prefer to check the
-    # existence of environ variables set during Python initialization
-    kivy_build = environ.get('KIVY_BUILD', '')
-    if kivy_build in {'android', 'ios'}:
-        return kivy_build
-    elif 'P4A_BOOTSTRAP' in environ:
+    # presence of python-for-android environment variables (ANDROID_ARGUMENT
+    # or ANDROID_PRIVATE).
+    if 'ANDROID_ARGUMENT' in environ:
         return 'android'
-    elif 'ANDROID_ARGUMENT' in environ:
-        # We used to use this method to detect android platform,
-        # leaving it here to be backwards compatible with `pydroid3`
-        # and similar tools outside kivy's ecosystem
-        return 'android'
+    elif environ.get('KIVY_BUILD', '') == 'ios':
+        return 'ios'
+    elif environ.get('KIVY_BUILD', '') == 'emscripten':
+        return 'emscripten'
     elif _sys_platform in ('win32', 'cygwin'):
         return 'win'
     elif _sys_platform == 'darwin':
@@ -510,36 +497,3 @@ class reify(object):
         retval = self.func(inst)
         setattr(inst, self.func.__name__, retval)
         return retval
-
-
-def _get_pi_version():
-    """Detect the version of the Raspberry Pi by reading the revision field value from '/proc/cpuinfo'
-    See: https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
-    Based on: https://github.com/adafruit/Adafruit_Python_GPIO/blob/master/Adafruit_GPIO/Platform.py
-    """  # noqa
-    # Check if file exist
-    if not path.isfile('/proc/cpuinfo'):
-        return None
-
-    with open('/proc/cpuinfo', 'r') as f:
-        cpuinfo = f.read()
-
-    # Match a line like 'Revision   : a01041'
-    revision = search(r'^Revision\s+:\s+(\w+)$', cpuinfo,
-                      flags=MULTILINE | IGNORECASE)
-    if not revision:
-        # Couldn't find the hardware revision, assume it is not a Pi
-        return None
-
-    # Determine the Pi version using the processor bits using the new-style
-    # revision format
-    revision = int(revision.group(1), base=16)
-    if revision & 0x800000:
-        return ((revision & 0xF000) >> 12) + 1
-
-    # If it is not using the new style revision format,
-    # then it must be a Raspberry Pi 1
-    return 1
-
-
-pi_version = _get_pi_version()
