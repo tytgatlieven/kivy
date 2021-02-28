@@ -435,6 +435,8 @@ def _get_platform():
         # leaving it here to be backwards compatible with `pydroid3`
         # and similar tools outside kivy's ecosystem
         return 'android'
+    elif environ.get('KIVY_BUILD', '') == 'emscripten':
+        return 'emscripten'
     elif _sys_platform in ('win32', 'cygwin'):
         return 'win'
     elif _sys_platform == 'darwin':

@@ -480,6 +480,7 @@ class WindowSDL(WindowBase):
         # handled by the event filter), and remove them from the queue.
         # Nothing happen during the pause on iOS, except gyroscope value sent
         # over joystick. So it's safe.
+
         while self._pause_loop:
             self._win.wait_event()
             if not self._pause_loop:
@@ -529,6 +530,11 @@ class WindowSDL(WindowBase):
                     continue
                 self._mouse_meta = self.modifiers
                 self.dispatch('on_mouse_move', x, y, self.modifiers)
+                if platform == 'emscripten':
+                    nx, ny = args
+                    nx = nx / self.system_size[0]
+                    ny = ny / self.system_size[1]
+                    SDL2MotionEventProvider.q.appendleft(('update', 0, nx, ny))
 
             elif action in ('mousebuttondown', 'mousebuttonup'):
                 x, y, button = args
@@ -550,6 +556,17 @@ class WindowSDL(WindowBase):
                 self._mouse_x = x
                 self._mouse_y = y
                 self.dispatch(eventname, x, y, btn, self.modifiers)
+                if platform == 'emscripten':
+                    nx, ny = args[:2]
+                    nx = nx / self.system_size[0]
+                    ny = ny / self.system_size[1]
+                    SDL2MotionEventProvider.q.appendleft((
+                        'fingerdown' \
+                        if eventname == 'on_mouse_down' \
+                        else 'fingerup',
+                        0, nx, ny,
+                    ))
+
             elif action.startswith('mousewheel'):
                 self._update_modifiers()
                 x, y, button = args
