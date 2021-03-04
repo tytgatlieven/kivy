@@ -425,6 +425,8 @@ def format_bytes_to_human(size, precision=2):
 def _get_platform():
     # On Android sys.platform returns 'linux2', so prefer to check the
     # existence of environ variables set during Python initialization
+    if _sys_platform == 'emscripten':
+        return 'emscripten'
     kivy_build = environ.get('KIVY_BUILD', '')
     if kivy_build in {'android', 'ios'}:
         return kivy_build
@@ -435,8 +437,6 @@ def _get_platform():
         # leaving it here to be backwards compatible with `pydroid3`
         # and similar tools outside kivy's ecosystem
         return 'android'
-    elif environ.get('KIVY_BUILD', '') == 'emscripten':
-        return 'emscripten'
     elif _sys_platform in ('win32', 'cygwin'):
         return 'win'
     elif _sys_platform == 'darwin':
