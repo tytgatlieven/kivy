@@ -403,12 +403,13 @@ except ImportError:
     print('User distribution detected, avoid portable command.')
 
 # Detect which opengl version headers to use
-if platform in ('android', 'darwin', 'ios', 'rpi', 'mali', 'vc'):
+if platform in ('android', 'darwin', 'ios', 'rpi', 'mali', 'vc', 'emscripten'):
     c_options['use_opengl_es2'] = True
 elif c_options['use_opengl_es2'] is None:
     c_options['use_opengl_es2'] = \
         environ.get('KIVY_GRAPHICS', '').lower() == 'gles'
 
+print('The current platform:%s' % platform)
 print('Using this graphics system: {}'.format(
     ['OpenGL', 'OpenGL ES 2'][int(c_options['use_opengl_es2'] or False)]))
 
