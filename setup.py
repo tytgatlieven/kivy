@@ -403,7 +403,7 @@ except ImportError:
     print('User distribution detected, avoid portable command.')
 
 # Detect which opengl version headers to use
-if platform in ('android', 'darwin', 'ios', 'rpi', 'mali', 'vc', 'emscripten'):
+if platform in ('android', 'darwin', 'ios', 'rpi', 'mali', 'vc', 'emscripten','linux'):
     c_options['use_opengl_es2'] = True
 elif c_options['use_opengl_es2'] is None:
     c_options['use_opengl_es2'] = \
@@ -481,11 +481,13 @@ if platform not in ('ios', 'android') and (c_options['use_gstreamer']
             print('GStreamer found via pkg-config')
             c_options['use_gstreamer'] = True
 
-
 # detect SDL2, only on desktop and iOS, or android if explicitly enabled
 # works if we forced the options or in autodetection
 sdl2_flags = {}
 if platform == 'win32' and c_options['use_sdl2'] is None:
+    c_options['use_sdl2'] = True
+
+if platform == 'emscripton':
     c_options['use_sdl2'] = True
 
 if c_options['use_sdl2'] or (
